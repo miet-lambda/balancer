@@ -1,8 +1,11 @@
 package miet.lambda
 
-import io.ktor.server.application.*
-import io.ktor.server.engine.*
-import io.ktor.server.netty.*
+import io.ktor.server.application.Application
+import io.ktor.server.application.createApplicationPlugin
+import io.ktor.server.application.install
+import io.ktor.server.engine.embeddedServer
+import io.ktor.server.netty.Netty
+import io.ktor.server.request.uri
 
 fun main() {
     embeddedServer(Netty, port = 8080, host = "0.0.0.0", module = Application::module)
@@ -10,5 +13,12 @@ fun main() {
 }
 
 fun Application.module() {
-    configureRouting()
+    val plugin =
+        createApplicationPlugin(name = "RequestLoggingPlugin") {
+            onCall { call ->
+                println(call.request.uri)
+            }
+        }
+
+    install(plugin)
 }

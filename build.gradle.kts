@@ -1,9 +1,10 @@
-val kotlin_version: String by project
-val logback_version: String by project
+val kotlinVersion: String by project
+val logbackVersion: String by project
 
 plugins {
     kotlin("jvm") version "2.1.10"
     id("io.ktor.plugin") version "3.1.0"
+    id("org.jlleitschuh.gradle.ktlint") version "12.2.0"
 }
 
 group = "miet.lambda"
@@ -23,8 +24,13 @@ repositories {
 dependencies {
     implementation("io.ktor:ktor-server-core-jvm")
     implementation("io.ktor:ktor-server-netty")
-    implementation("ch.qos.logback:logback-classic:$logback_version")
+    implementation("ch.qos.logback:logback-classic:$logbackVersion")
     implementation("io.ktor:ktor-server-core")
     testImplementation("io.ktor:ktor-server-test-host")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
+}
+
+ktlint {
+    version.set("1.5.0")
+    debug.set(true)
 }
