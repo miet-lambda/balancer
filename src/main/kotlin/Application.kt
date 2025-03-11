@@ -1,24 +1,64 @@
 package miet.lambda
 
-import io.ktor.server.application.Application
-import io.ktor.server.application.createApplicationPlugin
-import io.ktor.server.application.install
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.netty.Netty
-import io.ktor.server.request.uri
+import java.net.ServerSocket
+import java.net.Socket
 
 fun main() {
-    embeddedServer(Netty, port = 8080, host = "0.0.0.0", module = Application::module)
-        .start(wait = true)
+    val port = 8080
+    val serverSocket = ServerSocket(port)
+    println("Server is listening on port $port...")
+
+    while (true) {
+        val clientSocket = serverSocket.accept()
+        println("Client connected: ${clientSocket.inetAddress.hostAddress}")
+
+        Thread.ofVirtual().start {
+            handleClient(clientSocket)
+        }
+    }
 }
 
-fun Application.module() {
-    val plugin =
-        createApplicationPlugin(name = "RequestLoggingPlugin") {
-            onCall { call ->
-                println(call.request.uri)
-            }
+fun handleClient(clientSocket: Socket) {
+    try {
+        val inputStream = clientSocket.getInputStream().bufferedReader()
+        val outputStream = clientSocket.getOutputStream().bufferedWriter()
+
+        val request = StringBuilder()
+        while (true) {
+            val line = inputStream.readLine()
+            if (line == null || line.isEmpty()) break
+            request.append(line).append("\n")
         }
 
-    install(plugin)
+        println("Received request:\n$request")
+
+        val requestLines = request.toString().split("\n")
+        val requestLine = requestLines[0].split(" ")
+        val method = requestLine[0]
+        val path = requestLine[1]
+
+        val response =
+            when {
+                method == "GET" && path == "/" -> {
+                    "HTTP/1.1 200 OK\r\n" +
+                        "Content-Type: text/html; charset=UTF-8\r\n" +
+                        "\r\n" +
+                        "<html><body><h1>Hello, World!</h1></body></html>"
+                }
+                else -> {
+                    "HTTP/1.1 404 Not Found\r\n" +
+                        "Content-Type: text/html; charset=UTF-8\r\n" +
+                        "\r\n" +
+                        "<html><body><h1>404 Not Found</h1></body></html>"
+                }
+            }
+
+        outputStream.write(response)
+        outputStream.flush()
+    } catch (e: Exception) {
+        e.printStackTrace()
+    } finally {
+        clientSocket.close()
+        println("Client disconnected")
+    }
 }
