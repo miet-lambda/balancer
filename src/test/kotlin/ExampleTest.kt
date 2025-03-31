@@ -1,8 +1,11 @@
+import io.ktor.server.testing.testApplication
 import org.junit.Test
 
 class ExampleTest {
     @Test
     fun testRoot() {
-        assert(42 == 42)
+        testApplication {
+            this.startApplication()
+        }
     }
 }
