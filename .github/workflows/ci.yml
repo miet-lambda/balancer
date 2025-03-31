@@ -12,7 +12,30 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
 
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: '22'
+          distribution: 'temurin'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build project
+        run: ./gradlew clean buildFatJar
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: fat-jar
+          path: ./build/libs/balancer-all.jar
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
@@ -26,7 +49,22 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run tests
-        run: ./gradlew test
+        run: ./gradlew clean test
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: '22'
+          distribution: 'temurin'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
 
       - name: Run Ktlint
-        run: ./gradlew ktlintCheck
+        run: ./gradlew clean ktlintCheck
