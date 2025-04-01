@@ -10,6 +10,7 @@ import io.ktor.server.request.httpMethod
 import io.ktor.server.request.receiveStream
 import io.ktor.server.request.uri
 import io.ktor.server.routing.RoutingCall
+import io.ktor.util.StringValues
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.jvm.javaio.toByteReadChannel
 
@@ -44,12 +45,19 @@ class RemoteLambdaExecutor : LambdaExecutor {
             {
                 "method": "${request.httpMethod.value}",
                 "url": "${request.uri}",
-                "query": "${request.queryParameters}",
-                "headers": ${request.headers},
-                "body": "${call.receiveStream().readBytes()}"
+                "query": ${serializeStringValues(request.queryParameters)},
+                "headers": ${serializeStringValues(request.headers)},
+                "body": "${call.receiveStream().readBytes().decodeToString()}"
             }
         """.trimIndent()
     }
+
+    private fun serializeStringValues(stringValues: StringValues) =
+        """
+            {
+                ${stringValues.entries().joinToString(",\n") { (key, value) -> "\"$key\": \"${value.joinToString(", ")}\"" }}
+            }
+        """.trimIndent()
 }
 
 class StubLambdaExecutor : LambdaExecutor {

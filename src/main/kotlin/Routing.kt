@@ -13,12 +13,12 @@ class LambdaInfo(
     val userCurrentBalance: Double,
 )
 
-fun getLambdaId(service: String, lambda: String): Long {
-    return 1 // db call. Probably we should take a little more info except just lambda id
+fun getLambdaInfo(service: String, lambda: String): LambdaInfo {
+    return LambdaInfo(1, "$service $lambda", 100.0) // db call. Probably we should take a little more info except just lambda id
 }
 
 fun findExecutorForLambda(id: Long): LambdaExecutor {
-    return StubLambdaExecutor() // USE A THREAD SAFE POOL OF THEM
+    return RemoteLambdaExecutor() // USE A THREAD SAFE POOL OF THEM
 }
 
 fun Application.configureRouting() {
@@ -41,9 +41,9 @@ fun Application.configureRouting() {
                     return@handle
                 }
 
-                val lambdaId = getLambdaId(service, lambda)
-                val lambdaExecutor = findExecutorForLambda(lambdaId)
-                val response = lambdaExecutor.execute(lambdaId, call)
+                val lambdaInfo = getLambdaInfo(service, lambda)
+                val lambdaExecutor = findExecutorForLambda(lambdaInfo.id)
+                val response = lambdaExecutor.execute(lambdaInfo.id, call)
 
                 call.respondBytesWriter {
                     response.copyTo(this)

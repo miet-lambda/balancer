@@ -31,6 +31,7 @@ dependencies {
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
 
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
+    implementation("com.zaxxer:HikariCP:5.1.0")
 
     testImplementation("io.ktor:ktor-server-test-host")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
