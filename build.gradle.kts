@@ -1,11 +1,14 @@
 val kotlinVersion: String by project
-val logbackVersion: String by project
 val ktorVersion: String by project
+val kotlinxSerializationVersion: String by project
+val logbackVersion: String by project
+val hikariCPVersion: String by project
 
 plugins {
-    kotlin("jvm") version "2.1.10"
-    id("io.ktor.plugin") version "3.1.0"
-    id("org.jlleitschuh.gradle.ktlint") version "12.2.0"
+    kotlin("jvm")
+    kotlin("plugin.serialization")
+    id("io.ktor.plugin")
+    id("org.jlleitschuh.gradle.ktlint")
 }
 
 group = "miet.lambda"
@@ -31,9 +34,10 @@ dependencies {
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
 
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
-    implementation("com.zaxxer:HikariCP:5.1.0")
+    implementation("com.zaxxer:HikariCP:$hikariCPVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
 
-    testImplementation("io.ktor:ktor-server-test-host")
+    testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlinVersion")
 }
 

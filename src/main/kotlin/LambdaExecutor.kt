@@ -11,24 +11,44 @@ import io.ktor.server.request.receiveStream
 import io.ktor.server.request.uri
 import io.ktor.server.routing.RoutingCall
 import io.ktor.util.StringValues
+import io.ktor.util.toMap
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.jvm.javaio.toByteReadChannel
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 interface LambdaExecutor {
     suspend fun execute(
         lambdaId: Long,
-        request: RoutingCall,
+        call: RoutingCall,
     ): ByteReadChannel
 }
+
+@Serializable
+private data class LambdaRequest(
+    val method: String,
+    val url: String,
+    val query: Map<String, String>,
+    val headers: Map<String, String>,
+    val body: String,
+)
 
 class RemoteLambdaExecutor : LambdaExecutor {
     private val client = HttpClient()
 
     override suspend fun execute(
         lambdaId: Long,
-        request: RoutingCall,
+        call: RoutingCall,
     ): ByteReadChannel {
-        val requestJson = serializeRequestToJson(request)
+        val lambdaRequest = LambdaRequest(
+            method = call.request.httpMethod.value,
+            url = call.request.uri,
+            query = stringValuesToMap(call.request.queryParameters),
+            headers = stringValuesToMap(call.request.headers),
+            body = call.receiveStream().readBytes().decodeToString(),
+        )
+        val requestJson = Json.encodeToString(lambdaRequest)
+
         val response = client.post {
             url("http://localhost:8080/v1/execute/lambda/$lambdaId")
             headers {
@@ -39,29 +59,13 @@ class RemoteLambdaExecutor : LambdaExecutor {
         return response.bodyAsChannel()
     }
 
-    private suspend fun serializeRequestToJson(call: RoutingCall): String {
-        val request = call.request
-        return """
-            {
-                "method": "${request.httpMethod.value}",
-                "url": "${request.uri}",
-                "query": ${serializeStringValues(request.queryParameters)},
-                "headers": ${serializeStringValues(request.headers)},
-                "body": "${call.receiveStream().readBytes().decodeToString()}"
-            }
-        """.trimIndent()
+    private fun stringValuesToMap(stringValues: StringValues) = stringValues.toMap().mapValues {
+        it.value.joinToString(", ")
     }
-
-    private fun serializeStringValues(stringValues: StringValues) =
-        """
-            {
-                ${stringValues.entries().joinToString(",\n") { (key, value) -> "\"$key\": \"${value.joinToString(", ")}\"" }}
-            }
-        """.trimIndent()
 }
 
 class StubLambdaExecutor : LambdaExecutor {
-    override suspend fun execute(lambdaId: Long, request: RoutingCall): ByteReadChannel {
+    override suspend fun execute(lambdaId: Long, call: RoutingCall): ByteReadChannel {
         println("Executing lambda with id $lambdaId")
         return "Stub lambda result".byteInputStream().toByteReadChannel()
     }
