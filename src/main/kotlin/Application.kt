@@ -8,7 +8,7 @@ import io.ktor.server.netty.Netty
 import io.ktor.server.request.uri
 
 fun main() {
-    embeddedServer(Netty, port = 8080, host = "0.0.0.0", module = Application::module)
+    embeddedServer(Netty, port = 8080, host = "::", module = Application::module)
         .start(wait = true)
 }
 
@@ -21,4 +21,6 @@ fun Application.module() {
         }
 
     install(plugin)
+
+    configureRouting()
 }
