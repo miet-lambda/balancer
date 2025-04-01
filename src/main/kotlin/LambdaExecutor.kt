@@ -5,15 +5,13 @@ import io.ktor.client.request.headers
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.request.url
-import io.ktor.client.statement.bodyAsChannel
+import io.ktor.client.statement.bodyAsText
 import io.ktor.server.request.httpMethod
-import io.ktor.server.request.receiveStream
+import io.ktor.server.request.receiveText
 import io.ktor.server.request.uri
 import io.ktor.server.routing.RoutingCall
 import io.ktor.util.StringValues
 import io.ktor.util.toMap
-import io.ktor.utils.io.ByteReadChannel
-import io.ktor.utils.io.jvm.javaio.toByteReadChannel
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -21,7 +19,7 @@ interface LambdaExecutor {
     suspend fun execute(
         lambdaId: Long,
         call: RoutingCall,
-    ): ByteReadChannel
+    ): String
 }
 
 @Serializable
@@ -39,15 +37,16 @@ class RemoteLambdaExecutor : LambdaExecutor {
     override suspend fun execute(
         lambdaId: Long,
         call: RoutingCall,
-    ): ByteReadChannel {
+    ): String {
         val lambdaRequest = LambdaRequest(
             method = call.request.httpMethod.value,
             url = call.request.uri,
             query = stringValuesToMap(call.request.queryParameters),
             headers = stringValuesToMap(call.request.headers),
-            body = call.receiveStream().readBytes().decodeToString(),
+            body = call.receiveText(),
         )
         val requestJson = Json.encodeToString(lambdaRequest)
+        println(requestJson)
 
         val response = client.post {
             url("http://localhost:8080/v1/execute/lambda/$lambdaId")
@@ -56,7 +55,7 @@ class RemoteLambdaExecutor : LambdaExecutor {
             }
             setBody(requestJson)
         }
-        return response.bodyAsChannel()
+        return response.bodyAsText()
     }
 
     private fun stringValuesToMap(stringValues: StringValues) = stringValues.toMap().mapValues {
@@ -65,8 +64,8 @@ class RemoteLambdaExecutor : LambdaExecutor {
 }
 
 class StubLambdaExecutor : LambdaExecutor {
-    override suspend fun execute(lambdaId: Long, call: RoutingCall): ByteReadChannel {
+    override suspend fun execute(lambdaId: Long, call: RoutingCall): String {
         println("Executing lambda with id $lambdaId")
-        return "Stub lambda result".byteInputStream().toByteReadChannel()
+        return "Stub lambda result"
     }
 }

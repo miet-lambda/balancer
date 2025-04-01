@@ -33,8 +33,10 @@ dependencies {
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
 
-    implementation("ch.qos.logback:logback-classic:$logbackVersion")
     implementation("com.zaxxer:HikariCP:$hikariCPVersion")
+    implementation("org.postgresql:postgresql:42.7.5")
+
+    implementation("ch.qos.logback:logback-classic:$logbackVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
 
     testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")

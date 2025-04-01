@@ -1,21 +1,16 @@
 package miet.lambda
 
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
-import io.ktor.server.response.respondBytesWriter
-import io.ktor.server.response.respondOutputStream
+import io.ktor.server.response.respondText
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
-import io.ktor.utils.io.copyTo
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
-class LambdaInfo(
-    val id: Long,
-    val name: String,
-    val userCurrentBalance: Double,
-)
-
-fun getLambdaInfo(service: String, lambda: String): LambdaInfo {
-    return LambdaInfo(1, "$service $lambda", 100.0) // db call. Probably we should take a little more info except just lambda id
-}
+val database = Database()
 
 fun findExecutorForLambda(id: Long): LambdaExecutor {
     return RemoteLambdaExecutor() // USE A THREAD SAFE POOL OF THEM
@@ -23,30 +18,39 @@ fun findExecutorForLambda(id: Long): LambdaExecutor {
 
 fun Application.configureRouting() {
     routing {
-        route("/{service}/{lambda}") {
+        route(Regex("(?<service>[^/]+)/(?<lambda>.+)")) {
             handle {
                 val service = call.parameters["service"]
                 if (service == null) {
-                    call.respondOutputStream {
-                        write("Service is not specified".toByteArray())
-                    }
+                    call.respondText("Service is not specified")
                     return@handle
                 }
 
                 val lambda = call.parameters["lambda"]
                 if (lambda == null) {
-                    call.respondOutputStream {
-                        write("Lambda is not specified".toByteArray())
-                    }
+                    call.respondText("Lambda is not specified")
                     return@handle
                 }
 
-                val lambdaInfo = getLambdaInfo(service, lambda)
+                val lambdaInfo = database.getLambdaInfo(service, lambda)
+                if (lambdaInfo == null) {
+                    call.respondText("Lambda not found")
+                    return@handle
+                }
+
                 val lambdaExecutor = findExecutorForLambda(lambdaInfo.id)
                 val response = lambdaExecutor.execute(lambdaInfo.id, call)
 
-                call.respondBytesWriter {
-                    response.copyTo(this)
+                val responseJson = Json.parseToJsonElement(response)
+                val statusCode = responseJson.jsonObject["statusCode"]?.jsonPrimitive?.int
+                if (statusCode != null) {
+                    call.response.status(HttpStatusCode.fromValue(statusCode))
+                }
+
+                val responseBody = responseJson.jsonObject["body"]?.jsonPrimitive?.content
+                if (responseBody != null) {
+                    call.respondText(responseBody)
+                    return@handle
                 }
             }
         }
