@@ -10,13 +10,7 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-val database = Database()
-
-fun findExecutorForLambda(id: Long): LambdaExecutor {
-    return RemoteLambdaExecutor() // USE A THREAD SAFE POOL OF THEM
-}
-
-fun Application.configureRouting() {
+fun Application.configureRouting(dataProvider: DataProvider, lambdaExecutorProvider: LambdaExecutorProvider) {
     routing {
         route(Regex("(?<service>[^/]+)/(?<lambda>.+)")) {
             handle {
@@ -32,13 +26,13 @@ fun Application.configureRouting() {
                     return@handle
                 }
 
-                val lambdaInfo = database.getLambdaInfo(service, lambda)
+                val lambdaInfo = dataProvider.getLambdaInfo(service, lambda)
                 if (lambdaInfo == null) {
                     call.respondText("Lambda not found")
                     return@handle
                 }
 
-                val lambdaExecutor = findExecutorForLambda(lambdaInfo.id)
+                val lambdaExecutor = lambdaExecutorProvider.findExecutorForLambda(lambdaInfo.id)
                 val response = lambdaExecutor.execute(lambdaInfo.id, call)
 
                 val responseJson = Json.parseToJsonElement(response)

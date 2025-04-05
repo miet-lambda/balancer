@@ -18,10 +18,14 @@ class LambdaInfo(
     val currentUserBalance: Double,
 )
 
-class Database {
+interface DataProvider {
+    fun getLambdaInfo(service: String, lambda: String): LambdaInfo?
+}
+
+class PostgresDatabaseDataProvider : DataProvider {
     private val dataSource = HikariDataSource(getHikariConfig())
 
-    fun getLambdaInfo(service: String, lambda: String) = executeQuery {
+    override fun getLambdaInfo(service: String, lambda: String) = executeQuery {
         sql = """
             SELECT s.id, u.money_balance
             FROM scripts AS s

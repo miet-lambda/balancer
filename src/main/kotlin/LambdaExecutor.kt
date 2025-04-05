@@ -6,10 +6,12 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.request.url
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.headers
 import io.ktor.server.request.httpMethod
 import io.ktor.server.request.receiveText
 import io.ktor.server.request.uri
 import io.ktor.server.routing.RoutingCall
+import io.ktor.server.util.url
 import io.ktor.util.StringValues
 import io.ktor.util.toMap
 import kotlinx.serialization.Serializable
@@ -31,9 +33,9 @@ private data class LambdaRequest(
     val body: String,
 )
 
-class RemoteLambdaExecutor : LambdaExecutor {
-    private val client = HttpClient()
-
+class RemoteLambdaExecutor(
+    private val client: HttpClient = HttpClient(),
+) : LambdaExecutor {
     override suspend fun execute(
         lambdaId: Long,
         call: RoutingCall,
