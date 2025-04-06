@@ -1,37 +1,32 @@
 package miet.lambda
 
 import io.ktor.client.HttpClient
-import io.ktor.client.request.headers
+import io.ktor.client.call.body
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.request.url
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.headers
 import io.ktor.server.request.httpMethod
 import io.ktor.server.request.receiveText
 import io.ktor.server.request.uri
 import io.ktor.server.routing.RoutingCall
-import io.ktor.server.util.url
 import io.ktor.util.StringValues
 import io.ktor.util.toMap
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 
 interface LambdaExecutor {
     suspend fun execute(
         lambdaId: Long,
         call: RoutingCall,
-    ): String
+    ): LambdaExecutionResult
 }
 
-@Serializable
-private data class LambdaRequest(
-    val method: String,
-    val url: String,
-    val query: Map<String, String>,
-    val headers: Map<String, String>,
-    val body: String,
-)
+sealed interface LambdaExecutionResult {
+    data class Success(
+        val response: LambdaExecutorResponse,
+    ) : LambdaExecutionResult
+
+    data object Failure : LambdaExecutionResult
+}
 
 class RemoteLambdaExecutor(
     private val client: HttpClient = HttpClient(),
@@ -39,25 +34,28 @@ class RemoteLambdaExecutor(
     override suspend fun execute(
         lambdaId: Long,
         call: RoutingCall,
-    ): String {
-        val lambdaRequest = LambdaRequest(
+    ) = try {
+        val lambdaRequest = LambdaExecutorRequest(
             method = call.request.httpMethod.value,
             url = call.request.uri,
             query = stringValuesToMap(call.request.queryParameters),
             headers = stringValuesToMap(call.request.headers),
             body = call.receiveText(),
         )
-        val requestJson = Json.encodeToString(lambdaRequest)
-        println(requestJson)
 
         val response = client.post {
             url("http://localhost:8080/v1/execute/lambda/$lambdaId")
-            headers {
-                append("Content-Type", "application/json")
-            }
-            setBody(requestJson)
+            header("Content-Type", "application/json")
+            setBody(lambdaRequest)
         }
-        return response.bodyAsText()
+
+        if (response.status.value == 200) {
+            LambdaExecutionResult.Success(response.body())
+        } else {
+            LambdaExecutionResult.Failure
+        }
+    } catch (e: Exception) {
+        LambdaExecutionResult.Failure
     }
 
     private fun stringValuesToMap(stringValues: StringValues) = stringValues.toMap().mapValues {
@@ -66,8 +64,11 @@ class RemoteLambdaExecutor(
 }
 
 class StubLambdaExecutor : LambdaExecutor {
-    override suspend fun execute(lambdaId: Long, call: RoutingCall): String {
-        println("Executing lambda with id $lambdaId")
-        return "Stub lambda result"
-    }
+    override suspend fun execute(lambdaId: Long, call: RoutingCall) = LambdaExecutionResult.Success(
+        LambdaExecutorResponse(
+            statusCode = 200,
+            headers = mapOf(),
+            body = "Executed lambda with id $lambdaId",
+        ),
+    )
 }

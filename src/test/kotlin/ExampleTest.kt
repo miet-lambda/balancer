@@ -15,7 +15,7 @@ import miet.lambda.LambdaExecutorRequest
 import miet.lambda.LambdaExecutorResponse
 import miet.lambda.LambdaInfo
 import miet.lambda.RemoteLambdaExecutor
-import miet.lambda.module
+import miet.lambda.configureRouting
 import org.junit.Test
 import kotlin.test.assertEquals
 
@@ -35,7 +35,13 @@ class ExampleTest {
                             call.respondText("Lambda ID is not specified")
                             return@post
                         }
-                        call.respond(LambdaExecutorResponse(200, "Executed lambda result"))
+                        call.respond(
+                            LambdaExecutorResponse(
+                                200,
+                                mapOf(),
+                                "Executed lambda result",
+                            ),
+                        )
                     }
                 }
             }
@@ -56,7 +62,7 @@ class ExampleTest {
                 override fun findExecutorForLambda(lambdaId: Long) = RemoteLambdaExecutor(client)
             }
 
-            module(dataProvider, lambdaExecutorProvider)
+            configureRouting(dataProvider, lambdaExecutorProvider)
         }
 
         val response = client.post("http://localhost:80/service/lambda") {

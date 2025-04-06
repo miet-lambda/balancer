@@ -5,10 +5,6 @@ import io.ktor.server.application.Application
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.int
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 
 fun Application.configureRouting(dataProvider: DataProvider, lambdaExecutorProvider: LambdaExecutorProvider) {
     routing {
@@ -33,18 +29,18 @@ fun Application.configureRouting(dataProvider: DataProvider, lambdaExecutorProvi
                 }
 
                 val lambdaExecutor = lambdaExecutorProvider.findExecutorForLambda(lambdaInfo.id)
-                val response = lambdaExecutor.execute(lambdaInfo.id, call)
+                when (val result = lambdaExecutor.execute(lambdaInfo.id, call)) {
+                    is LambdaExecutionResult.Success -> {
+                        call.response.status(HttpStatusCode.fromValue(result.response.statusCode))
 
-                val responseJson = Json.parseToJsonElement(response)
-                val statusCode = responseJson.jsonObject["statusCode"]?.jsonPrimitive?.int
-                if (statusCode != null) {
-                    call.response.status(HttpStatusCode.fromValue(statusCode))
-                }
+                        val responseBody = result.response.body
+                        if (responseBody != null) {
+                            call.respondText(responseBody)
+                            return@handle
+                        }
+                    }
 
-                val responseBody = responseJson.jsonObject["body"]?.jsonPrimitive?.content
-                if (responseBody != null) {
-                    call.respondText(responseBody)
-                    return@handle
+                    is LambdaExecutionResult.Failure -> call.respondText("Lambda execution failed")
                 }
             }
         }

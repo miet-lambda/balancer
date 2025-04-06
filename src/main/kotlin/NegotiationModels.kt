@@ -14,5 +14,6 @@ data class LambdaExecutorRequest(
 @Serializable
 data class LambdaExecutorResponse(
     val statusCode: Int,
-    val body: String,
+    val headers: Map<String, String>?,
+    val body: String?,
 )
