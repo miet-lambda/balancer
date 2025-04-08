@@ -28,6 +28,23 @@ sealed interface LambdaExecutionResult {
     data object Failure : LambdaExecutionResult
 }
 
+class RetryingLambdaExecutor(
+    private val executorProvider: LambdaExecutorProvider,
+) {
+    suspend fun execute(
+        lambdaId: Long,
+        call: RoutingCall,
+    ): LambdaExecutionResult {
+        val executor = executorProvider.findExecutorForLambda(lambdaId)
+        while (true) {
+            val result = executor.execute(lambdaId, call)
+            if (result is LambdaExecutionResult.Success) {
+                return result
+            }
+        }
+    }
+}
+
 class RemoteLambdaExecutor(
     private val client: HttpClient = HttpClient(),
 ) : LambdaExecutor {

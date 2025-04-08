@@ -59,7 +59,7 @@ class ExampleTest {
             }
 
             val lambdaExecutorProvider = object : LambdaExecutorProvider {
-                override fun findExecutorForLambda(lambdaId: Long) = RemoteLambdaExecutor(client)
+                override suspend fun findExecutorForLambda(lambdaId: Long) = RemoteLambdaExecutor(client)
             }
 
             configureRouting(dataProvider, lambdaExecutorProvider)
