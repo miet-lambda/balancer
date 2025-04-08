@@ -6,17 +6,11 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.request.url
-import io.ktor.server.request.httpMethod
-import io.ktor.server.request.receiveText
-import io.ktor.server.request.uri
-import io.ktor.server.routing.RoutingCall
-import io.ktor.util.StringValues
-import io.ktor.util.toMap
 
 interface LambdaExecutor {
     suspend fun execute(
         lambdaId: Long,
-        call: RoutingCall,
+        request: LambdaExecutorRequest,
     ): LambdaExecutionResult
 }
 
@@ -25,20 +19,27 @@ sealed interface LambdaExecutionResult {
         val response: LambdaExecutorResponse,
     ) : LambdaExecutionResult
 
-    data object Failure : LambdaExecutionResult
+    data class Failure(val message: String) : LambdaExecutionResult
 }
 
 class RetryingLambdaExecutor(
     private val executorProvider: LambdaExecutorProvider,
-) {
-    suspend fun execute(
+    private val maxRetries: Int = 3,
+) : LambdaExecutor {
+    override suspend fun execute(
         lambdaId: Long,
-        call: RoutingCall,
+        request: LambdaExecutorRequest,
     ): LambdaExecutionResult {
         val executor = executorProvider.findExecutorForLambda(lambdaId)
+        var retries = 0
         while (true) {
-            val result = executor.execute(lambdaId, call)
+            val result = executor.execute(lambdaId, request)
             if (result is LambdaExecutionResult.Success) {
+                return result
+            }
+
+            retries++
+            if (retries >= maxRetries) {
                 return result
             }
         }
@@ -46,46 +47,25 @@ class RetryingLambdaExecutor(
 }
 
 class RemoteLambdaExecutor(
-    private val client: HttpClient = HttpClient(),
+    private val client: HttpClient,
 ) : LambdaExecutor {
     override suspend fun execute(
         lambdaId: Long,
-        call: RoutingCall,
+        request: LambdaExecutorRequest,
     ) = try {
-        val lambdaRequest = LambdaExecutorRequest(
-            method = call.request.httpMethod.value,
-            url = call.request.uri,
-            query = stringValuesToMap(call.request.queryParameters),
-            headers = stringValuesToMap(call.request.headers),
-            body = call.receiveText(),
-        )
-
         val response = client.post {
-            url("http://localhost:8080/v1/execute/lambda/$lambdaId")
+            url("v1/execute/lambda/$lambdaId")
             header("Content-Type", "application/json")
-            setBody(lambdaRequest)
+            header("Accept", "application/json")
+            setBody(request)
         }
 
         if (response.status.value == 200) {
             LambdaExecutionResult.Success(response.body())
         } else {
-            LambdaExecutionResult.Failure
+            LambdaExecutionResult.Failure("Remote lambda executor returned status code ${response.status.value}")
         }
     } catch (e: Exception) {
-        LambdaExecutionResult.Failure
+        LambdaExecutionResult.Failure("Remote lambda execution failed with exception: ${e.message}")
     }
-
-    private fun stringValuesToMap(stringValues: StringValues) = stringValues.toMap().mapValues {
-        it.value.joinToString(", ")
-    }
-}
-
-class StubLambdaExecutor : LambdaExecutor {
-    override suspend fun execute(lambdaId: Long, call: RoutingCall) = LambdaExecutionResult.Success(
-        LambdaExecutorResponse(
-            statusCode = 200,
-            headers = mapOf(),
-            body = "Executed lambda with id $lambdaId",
-        ),
-    )
 }

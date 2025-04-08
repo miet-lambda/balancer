@@ -64,7 +64,7 @@ class PostgresDatabaseDataProvider : DataProvider {
         """.trimIndent()
 
         processResultSet {
-            getList { ExecutorInfo(getString("ip"), getInt("port")) }
+            getList { ExecutorInfo(getString("ip_address"), getInt("port")) }
         }
     }
 }

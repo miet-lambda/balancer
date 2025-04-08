@@ -2,9 +2,14 @@ package miet.lambda
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
+import io.ktor.server.request.httpMethod
+import io.ktor.server.request.receiveText
+import io.ktor.server.request.uri
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
+import io.ktor.util.StringValues
+import io.ktor.util.toMap
 import miet.lambda.db.DataProvider
 
 fun Application.configureRouting(dataProvider: DataProvider, lambdaExecutorProvider: LambdaExecutorProvider) {
@@ -28,11 +33,21 @@ fun Application.configureRouting(dataProvider: DataProvider, lambdaExecutorProvi
                 val lambdaInfo = dataProvider.getLambdaInfo(service, lambda)
                 if (lambdaInfo == null) {
                     call.respondText("Lambda not found")
+                    call.response.status(HttpStatusCode.NotFound)
                     return@handle
                 }
 
                 val lambdaExecutor = lambdaExecutorProvider.findExecutorForLambda(lambdaInfo.id)
-                when (val result = lambdaExecutor.execute(lambdaInfo.id, call)) {
+
+                val lambdaExecutorRequest = LambdaExecutorRequest(
+                    method = call.request.httpMethod.value,
+                    url = call.request.uri,
+                    queryParameters = stringValuesToMap(call.request.queryParameters),
+                    headers = stringValuesToMap(call.request.headers),
+                    body = call.receiveText(),
+                )
+
+                when (val result = lambdaExecutor.execute(lambdaInfo.id, lambdaExecutorRequest)) {
                     is LambdaExecutionResult.Success -> {
                         call.response.status(HttpStatusCode.fromValue(result.response.statusCode))
 
@@ -45,10 +60,14 @@ fun Application.configureRouting(dataProvider: DataProvider, lambdaExecutorProvi
 
                     is LambdaExecutionResult.Failure -> {
                         call.response.status(HttpStatusCode.InternalServerError)
-                        call.respondText("Lambda execution failed")
+                        call.respondText(result.message)
                     }
                 }
             }
         }
     }
+}
+
+private fun stringValuesToMap(stringValues: StringValues) = stringValues.toMap().mapValues {
+    it.value.joinToString(", ")
 }

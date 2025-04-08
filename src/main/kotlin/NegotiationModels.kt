@@ -1,12 +1,13 @@
 package miet.lambda
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class LambdaExecutorRequest(
     val method: String,
     val url: String,
-    val query: Map<String, String>,
+    @SerialName("query") val queryParameters: Map<String, String>,
     val headers: Map<String, String>,
     val body: String,
 )

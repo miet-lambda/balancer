@@ -1,3 +1,4 @@
+import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -49,6 +50,9 @@ class ExampleTest {
         }
 
         val client = createClient {
+            defaultRequest {
+                url("http://localhost:8080/")
+            }
             install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
                 json()
             }
@@ -73,7 +77,7 @@ class ExampleTest {
                 LambdaExecutorRequest(
                     method = "POST",
                     url = "/service/lambda",
-                    query = emptyMap(),
+                    queryParameters = emptyMap(),
                     headers = emptyMap(),
                     body = "",
                 ),
