@@ -5,6 +5,7 @@ import io.ktor.server.application.Application
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
+import miet.lambda.db.DataProvider
 
 fun Application.configureRouting(dataProvider: DataProvider, lambdaExecutorProvider: LambdaExecutorProvider) {
     routing {
@@ -13,12 +14,14 @@ fun Application.configureRouting(dataProvider: DataProvider, lambdaExecutorProvi
                 val service = call.parameters["service"]
                 if (service == null) {
                     call.respondText("Service is not specified")
+                    call.response.status(HttpStatusCode.BadRequest)
                     return@handle
                 }
 
                 val lambda = call.parameters["lambda"]
                 if (lambda == null) {
                     call.respondText("Lambda is not specified")
+                    call.response.status(HttpStatusCode.BadRequest)
                     return@handle
                 }
 
@@ -40,7 +43,10 @@ fun Application.configureRouting(dataProvider: DataProvider, lambdaExecutorProvi
                         }
                     }
 
-                    is LambdaExecutionResult.Failure -> call.respondText("Lambda execution failed")
+                    is LambdaExecutionResult.Failure -> {
+                        call.response.status(HttpStatusCode.InternalServerError)
+                        call.respondText("Lambda execution failed")
+                    }
                 }
             }
         }

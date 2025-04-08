@@ -9,13 +9,14 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
-import miet.lambda.DataProvider
 import miet.lambda.LambdaExecutorProvider
 import miet.lambda.LambdaExecutorRequest
 import miet.lambda.LambdaExecutorResponse
-import miet.lambda.LambdaInfo
 import miet.lambda.RemoteLambdaExecutor
 import miet.lambda.configureRouting
+import miet.lambda.db.DataProvider
+import miet.lambda.db.ExecutorInfo
+import miet.lambda.db.LambdaInfo
 import org.junit.Test
 import kotlin.test.assertEquals
 
@@ -55,7 +56,8 @@ class ExampleTest {
 
         application {
             val dataProvider = object : DataProvider {
-                override fun getLambdaInfo(service: String, lambda: String) = LambdaInfo(1, 1000.0)
+                override suspend fun getLambdaInfo(service: String, lambda: String) = LambdaInfo(1, 1000.0)
+                override suspend fun getActualExecutorsList() = listOf<ExecutorInfo>()
             }
 
             val lambdaExecutorProvider = object : LambdaExecutorProvider {
