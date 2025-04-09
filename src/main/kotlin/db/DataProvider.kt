@@ -47,13 +47,10 @@ class PostgresDatabaseDataProvider : DataProvider {
 
         processResultSet {
             if (next()) {
-                val balanceString = getString("money_balance")
-                val withoutCurrency = balanceString.substring(0, balanceString.length - 1).replace(",", ".")
-
                 LambdaInfo(
                     getLong("id"),
                     getLong("owner_id"),
-                    withoutCurrency.toDouble(),
+                    getDouble("money_balance"),
                 )
             } else {
                 null
