@@ -39,7 +39,7 @@ class RoundRobinPoolLambdaExecutorProvider(
     }
 
     override suspend fun findExecutorForLambda(lambdaId: Long) = mutex.withLock {
-        val executor = lambdaExecutors[currentIndex]
+        val executor = lambdaExecutors[currentIndex % lambdaExecutors.size]
         currentIndex = (currentIndex + 1) % lambdaExecutors.size
         executor
     }

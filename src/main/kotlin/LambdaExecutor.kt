@@ -30,9 +30,9 @@ class RetryingLambdaExecutor(
         lambdaId: Long,
         request: LambdaExecutorRequest,
     ): LambdaExecutionResult {
-        val executor = executorProvider.findExecutorForLambda(lambdaId)
         var retries = 0
         while (true) {
+            val executor = executorProvider.findExecutorForLambda(lambdaId)
             val result = executor.execute(lambdaId, request)
             if (result is LambdaExecutionResult.Success) {
                 return result
