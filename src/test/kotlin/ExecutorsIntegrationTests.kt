@@ -9,6 +9,7 @@ import io.ktor.server.response.respond
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
+import io.ktor.server.testing.ExternalServicesBuilder
 import io.ktor.server.testing.testApplication
 import miet.lambda.LambdaExecutorProvider
 import miet.lambda.LambdaExecutorRequest
@@ -21,32 +22,18 @@ import miet.lambda.db.LambdaInfo
 import org.junit.Test
 import kotlin.test.assertEquals
 
-class ExampleTest {
+class ExecutorsIntegrationTests {
     @Test
-    fun testRoot() = testApplication {
+    fun testLambdaExecutionWithMockedExecutor() = testApplication {
         externalServices {
-            hosts("http://localhost:8080") {
-                install(io.ktor.server.plugins.contentnegotiation.ContentNegotiation) {
-                    json()
-                }
-
-                routing {
-                    post("/v1/execute/lambda/{id}") {
-                        val id = call.parameters["id"]?.toLongOrNull()
-                        if (id == null) {
-                            call.respondText("Lambda ID is not specified")
-                            return@post
-                        }
-                        call.respond(
-                            LambdaExecutorResponse(
-                                200,
-                                mapOf(),
-                                "Executed lambda result",
-                            ),
-                        )
-                    }
-                }
-            }
+            externalExecutorService(
+                "http://localhost:8080",
+                response = LambdaExecutorResponse(
+                    200,
+                    mapOf(),
+                    "Executed lambda result",
+                ),
+            )
         }
 
         val client = createClient {
@@ -86,5 +73,25 @@ class ExampleTest {
 
         assertEquals(200, response.status.value)
         assertEquals("Executed lambda result", response.bodyAsText())
+    }
+
+    private fun ExternalServicesBuilder.externalExecutorService(
+        vararg hosts: String,
+        response: LambdaExecutorResponse,
+    ) = hosts(*hosts) {
+        install(io.ktor.server.plugins.contentnegotiation.ContentNegotiation) {
+            json()
+        }
+
+        routing {
+            post("/v1/execute/lambda/{id}") {
+                val id = call.parameters["id"]?.toLongOrNull()
+                if (id == null) {
+                    call.respondText("Lambda ID is not specified")
+                    return@post
+                }
+                call.respond(response)
+            }
+        }
     }
 }
