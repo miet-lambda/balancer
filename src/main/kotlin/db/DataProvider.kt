@@ -18,12 +18,14 @@ class ExecutorInfo(
 
 class LambdaInfo(
     val id: Long,
+    val ownerId: Long,
     val currentUserBalance: Double,
 )
 
 interface DataProvider {
     suspend fun getLambdaInfo(service: String, lambda: String): LambdaInfo?
     suspend fun getActualExecutorsList(): List<ExecutorInfo>
+    suspend fun updateBalance(userId: Long, cost: Double): Int
 }
 
 class PostgresDatabaseDataProvider : DataProvider {
@@ -31,7 +33,7 @@ class PostgresDatabaseDataProvider : DataProvider {
 
     override suspend fun getLambdaInfo(service: String, lambda: String) = dataBase.executeQuery {
         sql = """
-            SELECT s.id, u.money_balance
+            SELECT s.id, u.money_balance, u.id AS owner_id
             FROM scripts AS s
             JOIN projects AS p ON s.parent_project_id = p.id
             JOIN users AS u ON p.owner_id = u.id
@@ -47,8 +49,10 @@ class PostgresDatabaseDataProvider : DataProvider {
             if (next()) {
                 val balanceString = getString("money_balance")
                 val withoutCurrency = balanceString.substring(0, balanceString.length - 1).replace(",", ".")
+
                 LambdaInfo(
                     getLong("id"),
+                    getLong("owner_id"),
                     withoutCurrency.toDouble(),
                 )
             } else {
@@ -65,6 +69,19 @@ class PostgresDatabaseDataProvider : DataProvider {
 
         processResultSet {
             getList { ExecutorInfo(getString("ip_address"), getInt("port")) }
+        }
+    }
+
+    override suspend fun updateBalance(userId: Long, cost: Double) = dataBase.executeUpdate {
+        sql = """
+            UPDATE users
+            SET money_balance = money_balance - ?
+            WHERE id = ?;
+        """.trimIndent()
+
+        prepareStatement {
+            setDouble(1, cost)
+            setLong(2, userId)
         }
     }
 }
