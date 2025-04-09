@@ -32,6 +32,29 @@ class PostgresDatabase(
         }
     }
 
+    suspend fun executeUpdate(
+        builder: UpdateBuilder.() -> Unit,
+    ): Int {
+        val updateBuilder = UpdateBuilder()
+        updateBuilder.builder()
+
+        if (updateBuilder.sql == null) {
+            error("SQL query is not specified")
+        }
+
+        return retry {
+            dataSource.connection.use { connection ->
+                connection.prepareStatement(updateBuilder.sql).use { preparedStatement ->
+                    updateBuilder.statementPreparation(preparedStatement)
+
+                    withContext(Dispatchers.IO) {
+                        preparedStatement.executeUpdate()
+                    }
+                }
+            }
+        }
+    }
+
     private inline fun <T> retry(
         times: Int = 3,
         block: () -> T,
@@ -47,6 +70,16 @@ class PostgresDatabase(
                 currentAttempt++
             }
         }
+    }
+}
+
+class UpdateBuilder {
+    var sql: String? = null
+    var statementPreparation: suspend PreparedStatement.() -> Unit = {}
+        private set
+
+    fun prepareStatement(block: suspend PreparedStatement.() -> Unit) {
+        statementPreparation = block
     }
 }
 

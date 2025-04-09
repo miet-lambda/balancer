@@ -47,8 +47,9 @@ class ExecutorsIntegrationTests {
 
         application {
             val dataProvider = object : DataProvider {
-                override suspend fun getLambdaInfo(service: String, lambda: String) = LambdaInfo(1, 1000.0)
+                override suspend fun getLambdaInfo(service: String, lambda: String) = LambdaInfo(1, 1, 1000.0)
                 override suspend fun getActualExecutorsList() = listOf<ExecutorInfo>()
+                override suspend fun updateBalance(userId: Long, cost: Double): Int = 1
             }
 
             val lambdaExecutorProvider = object : LambdaExecutorProvider {

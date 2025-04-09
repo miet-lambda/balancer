@@ -36,6 +36,11 @@ fun Application.configureRouting(dataProvider: DataProvider, lambdaExecutorProvi
                     call.response.status(HttpStatusCode.NotFound)
                     return@handle
                 }
+                if (lambdaInfo.currentUserBalance - LAMBDA_EXECUTION_COST < 0) {
+                    call.respondText("Not enough balance")
+                    call.response.status(HttpStatusCode.Forbidden)
+                    return@handle
+                }
 
                 val lambdaExecutor = lambdaExecutorProvider.findExecutorForLambda(lambdaInfo.id)
 
@@ -50,12 +55,12 @@ fun Application.configureRouting(dataProvider: DataProvider, lambdaExecutorProvi
                 when (val result = lambdaExecutor.execute(lambdaInfo.id, lambdaExecutorRequest)) {
                     is LambdaExecutionResult.Success -> {
                         call.response.status(HttpStatusCode.fromValue(result.response.statusCode))
+                        result.response.body?.let { call.respondText(it) }
 
-                        val responseBody = result.response.body
-                        if (responseBody != null) {
-                            call.respondText(responseBody)
-                            return@handle
-                        }
+                        dataProvider.updateBalance(
+                            lambdaInfo.ownerId,
+                            LAMBDA_EXECUTION_COST,
+                        )
                     }
 
                     is LambdaExecutionResult.Failure -> {
