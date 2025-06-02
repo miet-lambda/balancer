@@ -4,10 +4,10 @@ import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 
 private fun getHikariConfig() = HikariConfig().apply {
-    jdbcUrl = "jdbc:postgresql://localhost:5432/miet_lambda"
+    jdbcUrl = System.getenv("DB_URL")
     driverClassName = "org.postgresql.Driver"
-    username = "reosfire"
-    password = "password"
+    username = System.getenv("DB_USERNAME")
+    password = System.getenv("DB_PASSWORD")
     maximumPoolSize = 8
 }
 
