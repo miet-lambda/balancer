@@ -55,6 +55,9 @@ fun Application.configureRouting(dataProvider: DataProvider, lambdaExecutorProvi
                 when (val result = lambdaExecutor.execute(lambdaInfo.id, lambdaExecutorRequest)) {
                     is LambdaExecutionResult.Success -> {
                         call.response.status(HttpStatusCode.fromValue(result.response.statusCode))
+                        result.response.headers?.forEach { (key, value) ->
+                            call.response.headers.append(key, value)
+                        }
                         result.response.body?.let { call.respondText(it) }
 
                         dataProvider.updateBalance(
